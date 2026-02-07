@@ -6,6 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Trucking Tracker | The Light Park</title>
+  <!-- QR/Barcode Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
       --bg: #0B0D14;
@@ -873,20 +875,15 @@
     
     <!-- QR Scanner Tab -->
     <div class="scanner-body" id="scanner-qr">
-      <div class="scanner-video-container">
-        <video class="scanner-video" id="scannerVideo" playsinline></video>
-        <div class="scanner-overlay"></div>
-      </div>
+      <!-- QR Reader will be injected here by html5-qrcode -->
       <p class="scanner-hint">Point camera at QR code or barcode</p>
-      <div class="scanner-result" id="scanResult">
-        <div class="scanner-result-title">Scanned Code:</div>
-        <div class="scanner-result-code" id="scannedCode"></div>
-        <div class="scanner-item-found" id="scannedItem" style="display:none;">
-          <div class="scanner-item-name" id="scannedItemName"></div>
-          <div class="scanner-item-meta" id="scannedItemMeta"></div>
+      <div class="scanner-result" id="qrScanResult" style="display:none;">
+        <div class="scanner-item-found">
+          <div class="scanner-item-name" id="qrItemName"></div>
+          <div class="scanner-item-meta" id="qrItemMeta"></div>
         </div>
-        <div class="scanner-actions">
-          <select id="scanActionStage">
+        <div class="scanner-actions" id="qrActions" style="display:none;">
+          <select id="qrActionStage">
             <option value="">Update Stage...</option>
             <option value="Staged">→ Staged</option>
             <option value="Packed">→ Packed</option>
@@ -895,7 +892,7 @@
             <option value="Delivered">→ Delivered</option>
             <option value="Returned">→ Returned</option>
           </select>
-          <select id="scanActionTruck">
+          <select id="qrActionTruck">
             <option value="">Assign to Truck...</option>
             <option value="DRYVAN-01">DRYVAN-01</option>
             <option value="DRYVAN-02">DRYVAN-02</option>
@@ -904,8 +901,8 @@
             <option value="CONEX-01">CONEX-01</option>
             <option value="">— No Truck —</option>
           </select>
-          <button class="btn btn-primary" onclick="applyScanAction()">✓ Apply Changes</button>
-          <button class="btn btn-secondary" onclick="continueScan()">Scan Another</button>
+          <button class="btn btn-primary" onclick="applyQrAction()">✓ Apply Changes</button>
+          <button class="btn btn-secondary" onclick="scanAnother()">Scan Another</button>
         </div>
       </div>
     </div>
@@ -1293,7 +1290,7 @@
     }
     
     // Scanner functionality
-    let scannerStream = null;
+    let html5QrScanner = null;
     let currentScannedItem = null;
     let rfidScannedItem = null;
     let manualScannedItem = null;
@@ -1312,7 +1309,8 @@
       document.querySelectorAll('.scanner-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.scanner-body').forEach(b => b.style.display = 'none');
       
-      event.target.classList.add('active');
+      const clickedTab = document.querySelector(`.scanner-tab[onclick*="${tab}"]`) || event?.target;
+      if (clickedTab) clickedTab.classList.add('active');
       document.getElementById('scanner-' + tab).style.display = 'flex';
       
       if (tab === 'qr') {
@@ -1329,70 +1327,122 @@
     
     async function startCamera() {
       try {
-        const video = document.getElementById('scannerVideo');
-        scannerStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        video.srcObject = scannerStream;
-        video.play();
+        // Stop any existing scanner
+        await stopCamera();
         
-        // Start scanning loop (simulated - in production use jsQR or similar)
-        scanLoop();
+        // Replace video element with scanner div
+        const container = document.getElementById('scanner-qr');
+        let scannerDiv = document.getElementById('qr-reader');
+        if (!scannerDiv) {
+          // Hide the old video element, create scanner div
+          const video = document.getElementById('scannerVideo');
+          if (video) video.style.display = 'none';
+          
+          scannerDiv = document.createElement('div');
+          scannerDiv.id = 'qr-reader';
+          scannerDiv.style.width = '100%';
+          scannerDiv.style.maxWidth = '400px';
+          container.insertBefore(scannerDiv, container.firstChild);
+        }
+        
+        html5QrScanner = new Html5Qrcode('qr-reader');
+        
+        await html5QrScanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          onScanSuccess,
+          onScanFailure
+        );
+        
       } catch (err) {
         console.error('Camera error:', err);
         alert('Could not access camera. Please allow camera permissions or use Manual Entry tab.');
       }
     }
     
-    function stopCamera() {
-      if (scannerStream) {
-        scannerStream.getTracks().forEach(track => track.stop());
-        scannerStream = null;
+    async function stopCamera() {
+      if (html5QrScanner) {
+        try {
+          await html5QrScanner.stop();
+        } catch (e) {
+          // Already stopped
+        }
+        html5QrScanner = null;
       }
     }
     
-    // Simulated scan loop - in production, use jsQR library for real scanning
-    function scanLoop() {
-      // This is a placeholder - real implementation would use jsQR or html5-qrcode library
-      // For demo, we'll add a click-to-simulate-scan
-    }
-    
-    // Simulate a scan (for demo - click the video to simulate)
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('scannerVideo')?.addEventListener('click', () => {
-        // Simulate finding a random barcode from our items
-        const itemsWithBarcode = items.filter(i => i.barcode);
-        if (itemsWithBarcode.length > 0) {
-          const randomItem = itemsWithBarcode[Math.floor(Math.random() * itemsWithBarcode.length)];
-          handleScannedCode(randomItem.barcode);
-        } else {
-          handleScannedCode('DEMO-' + Date.now());
-        }
-      });
-    });
-    
-    function handleScannedCode(code) {
-      document.getElementById('scanResult').classList.add('show');
-      document.getElementById('scannedCode').textContent = code;
+    function onScanSuccess(decodedText, decodedResult) {
+      console.log('Scanned:', decodedText);
       
       // Look up item by barcode
-      const item = items.find(i => i.barcode === code);
+      const item = items.find(i => i.barcode?.toLowerCase() === decodedText.toLowerCase());
+      
       if (item) {
         currentScannedItem = item;
-        document.getElementById('scannedItem').style.display = 'block';
-        document.getElementById('scannedItemName').textContent = item.name + (item.qty > 1 ? ` (×${item.qty})` : '');
-        document.getElementById('scannedItemMeta').textContent = `Stage: ${item.stage} | Truck: ${item.truck || 'None'} | Venue: ${item.venue || 'None'}`;
-        document.getElementById('scanActionStage').value = item.stage;
-        document.getElementById('scanActionTruck').value = item.truck || '';
+        playBeep();
+        
+        // Show scan result
+        document.getElementById('qrScanResult').style.display = 'block';
+        document.getElementById('qrItemName').textContent = item.name + (item.qty > 1 ? ` (×${item.qty})` : '');
+        document.getElementById('qrItemMeta').textContent = `Stage: ${item.stage} | Truck: ${item.truck || 'None'}`;
+        document.getElementById('qrActionStage').value = item.stage;
+        document.getElementById('qrActionTruck').value = item.truck || '';
+        document.getElementById('qrActions').style.display = 'flex';
+        
+        // Pause scanner
+        stopCamera();
       } else {
+        // Item not found - show barcode anyway
+        playBeep();
+        document.getElementById('qrScanResult').style.display = 'block';
+        document.getElementById('qrItemName').textContent = '❓ Unknown Item';
+        document.getElementById('qrItemMeta').textContent = `Barcode: ${decodedText}`;
+        document.getElementById('qrActions').style.display = 'none';
         currentScannedItem = null;
-        document.getElementById('scannedItem').style.display = 'none';
-        document.getElementById('scannedItemMeta').textContent = 'Item not found in system';
+      }
+    }
+    
+    function onScanFailure(error) {
+      // Ignore - this fires constantly when no QR is found
+    }
+    
+    function applyQrAction() {
+      if (!currentScannedItem) {
+        alert('No item selected');
+        return;
       }
       
-      // Play beep sound
+      const stage = document.getElementById('qrActionStage').value;
+      const truck = document.getElementById('qrActionTruck').value;
+      
+      if (stage) currentScannedItem.stage = stage;
+      currentScannedItem.truck = truck;
+      
+      saveItems();
+      renderBoard();
+      renderManifests();
+      renderFleet();
+      
       playBeep();
+      alert(`✅ Updated: ${currentScannedItem.name}`);
+      
+      // Reset and resume scanning
+      document.getElementById('qrScanResult').style.display = 'none';
+      currentScannedItem = null;
+      startCamera();
     }
+    
+    function scanAnother() {
+      document.getElementById('qrScanResult').style.display = 'none';
+      currentScannedItem = null;
+      startCamera();
+    }
+    
+    // Note: Real QR scanning now handled by html5-qrcode library via onScanSuccess()
     
     function playBeep() {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
