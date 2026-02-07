@@ -467,6 +467,182 @@
       border: none;
       color: white;
       font-size: 28px;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+      z-index: 100;
+    }
+    .scan-btn:active { transform: scale(0.95); }
+    
+    /* Scanner Modal */
+    .scanner-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 1000;
+      flex-direction: column;
+    }
+    .scanner-modal.open { display: flex; }
+    .scanner-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .scanner-header h2 { font-size: 18px; }
+    .scanner-close {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .scanner-tabs {
+      display: flex;
+      background: var(--surface);
+    }
+    .scanner-tab {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .scanner-tab.active {
+      color: var(--purple);
+      border-bottom-color: var(--purple);
+    }
+    .scanner-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .scanner-video-container {
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 1;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .scanner-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .scanner-overlay {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px; height: 200px;
+      border: 3px solid var(--purple);
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+    }
+    .scanner-hint {
+      color: var(--text-dim);
+      font-size: 14px;
+      text-align: center;
+    }
+    .scanner-result {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      display: none;
+    }
+    .scanner-result.show { display: block; }
+    .scanner-result-title {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .scanner-result-code {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--purple);
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+    .scanner-item-found {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .scanner-item-name {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .scanner-item-meta {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .scanner-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .scanner-actions select,
+    .scanner-actions input {
+      width: 100%;
+      padding: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    
+    /* RFID Section */
+    .rfid-input-section {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .rfid-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      text-align: center;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .rfid-input:focus {
+      border-color: var(--purple);
+      outline: none;
+    }
+    .rfid-status {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .rfid-ready {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--green);
+      animation: pulse-ready 2s infinite;
+    }
+    @keyframes pulse-ready {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
       z-index: 100;
@@ -682,6 +858,131 @@
   
   <!-- Scan Button -->
   <button class="scan-btn" onclick="openScanner()">📷</button>
+  
+  <!-- Scanner Modal -->
+  <div class="scanner-modal" id="scannerModal">
+    <div class="scanner-header">
+      <h2>📷 Scan Item</h2>
+      <button class="scanner-close" onclick="closeScanner()">✕</button>
+    </div>
+    <div class="scanner-tabs">
+      <button class="scanner-tab active" onclick="switchScannerTab('qr')">📷 QR / Barcode</button>
+      <button class="scanner-tab" onclick="switchScannerTab('rfid')">📡 RFID</button>
+      <button class="scanner-tab" onclick="switchScannerTab('manual')">⌨️ Manual</button>
+    </div>
+    
+    <!-- QR Scanner Tab -->
+    <div class="scanner-body" id="scanner-qr">
+      <div class="scanner-video-container">
+        <video class="scanner-video" id="scannerVideo" playsinline></video>
+        <div class="scanner-overlay"></div>
+      </div>
+      <p class="scanner-hint">Point camera at QR code or barcode</p>
+      <div class="scanner-result" id="scanResult">
+        <div class="scanner-result-title">Scanned Code:</div>
+        <div class="scanner-result-code" id="scannedCode"></div>
+        <div class="scanner-item-found" id="scannedItem" style="display:none;">
+          <div class="scanner-item-name" id="scannedItemName"></div>
+          <div class="scanner-item-meta" id="scannedItemMeta"></div>
+        </div>
+        <div class="scanner-actions">
+          <select id="scanActionStage">
+            <option value="">Update Stage...</option>
+            <option value="Staged">→ Staged</option>
+            <option value="Packed">→ Packed</option>
+            <option value="Loaded">→ Loaded</option>
+            <option value="In Transit">→ In Transit</option>
+            <option value="Delivered">→ Delivered</option>
+            <option value="Returned">→ Returned</option>
+          </select>
+          <select id="scanActionTruck">
+            <option value="">Assign to Truck...</option>
+            <option value="DRYVAN-01">DRYVAN-01</option>
+            <option value="DRYVAN-02">DRYVAN-02</option>
+            <option value="FLATBED-01">FLATBED-01</option>
+            <option value="FLATBED-02">FLATBED-02</option>
+            <option value="CONEX-01">CONEX-01</option>
+            <option value="">— No Truck —</option>
+          </select>
+          <button class="btn btn-primary" onclick="applyScanAction()">✓ Apply Changes</button>
+          <button class="btn btn-secondary" onclick="continueScan()">Scan Another</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- RFID Tab -->
+    <div class="scanner-body" id="scanner-rfid" style="display:none;">
+      <div class="rfid-input-section">
+        <div class="rfid-status rfid-ready">📡 RFID Reader Ready — Waiting for scan...</div>
+        <input type="text" class="rfid-input" id="rfidInput" placeholder="RFID tag will appear here" autofocus>
+        <p class="scanner-hint">Scan RFID tag with your reader, or type tag ID manually</p>
+        <div class="scanner-result" id="rfidResult">
+          <div class="scanner-result-title">RFID Tag:</div>
+          <div class="scanner-result-code" id="rfidCode"></div>
+          <div class="scanner-item-found" id="rfidItem" style="display:none;">
+            <div class="scanner-item-name" id="rfidItemName"></div>
+            <div class="scanner-item-meta" id="rfidItemMeta"></div>
+          </div>
+          <div class="scanner-actions">
+            <select id="rfidActionStage">
+              <option value="">Update Stage...</option>
+              <option value="Staged">→ Staged</option>
+              <option value="Packed">→ Packed</option>
+              <option value="Loaded">→ Loaded</option>
+              <option value="In Transit">→ In Transit</option>
+              <option value="Delivered">→ Delivered</option>
+              <option value="Returned">→ Returned</option>
+            </select>
+            <select id="rfidActionTruck">
+              <option value="">Assign to Truck...</option>
+              <option value="DRYVAN-01">DRYVAN-01</option>
+              <option value="DRYVAN-02">DRYVAN-02</option>
+              <option value="FLATBED-01">FLATBED-01</option>
+              <option value="FLATBED-02">FLATBED-02</option>
+              <option value="CONEX-01">CONEX-01</option>
+              <option value="">— No Truck —</option>
+            </select>
+            <button class="btn btn-primary" onclick="applyRfidAction()">✓ Apply Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Manual Entry Tab -->
+    <div class="scanner-body" id="scanner-manual" style="display:none;">
+      <div class="rfid-input-section">
+        <input type="text" class="rfid-input" id="manualInput" placeholder="Enter barcode or ID...">
+        <button class="btn btn-primary" style="width:100%;max-width:400px;" onclick="lookupManual()">🔍 Look Up Item</button>
+        <div class="scanner-result" id="manualResult" style="margin-top:16px;">
+          <div class="scanner-item-found" id="manualItem" style="display:none;">
+            <div class="scanner-item-name" id="manualItemName"></div>
+            <div class="scanner-item-meta" id="manualItemMeta"></div>
+          </div>
+          <div class="scanner-actions" id="manualActions" style="display:none;">
+            <select id="manualActionStage">
+              <option value="">Update Stage...</option>
+              <option value="Staged">→ Staged</option>
+              <option value="Packed">→ Packed</option>
+              <option value="Loaded">→ Loaded</option>
+              <option value="In Transit">→ In Transit</option>
+              <option value="Delivered">→ Delivered</option>
+              <option value="Returned">→ Returned</option>
+            </select>
+            <select id="manualActionTruck">
+              <option value="">Assign to Truck...</option>
+              <option value="DRYVAN-01">DRYVAN-01</option>
+              <option value="DRYVAN-02">DRYVAN-02</option>
+              <option value="FLATBED-01">FLATBED-01</option>
+              <option value="FLATBED-02">FLATBED-02</option>
+              <option value="CONEX-01">CONEX-01</option>
+              <option value="">— No Truck —</option>
+            </select>
+            <button class="btn btn-primary" onclick="applyManualAction()">✓ Apply Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <script>
     // Supabase config
@@ -991,9 +1292,276 @@
       alert('Syncing with Shop Manager data...\n\nIn production, this pulls from the shared Supabase database.');
     }
     
-    // Scanner (placeholder)
+    // Scanner functionality
+    let scannerStream = null;
+    let currentScannedItem = null;
+    let rfidScannedItem = null;
+    let manualScannedItem = null;
+    
     function openScanner() {
-      alert('📷 QR/Barcode Scanner\n\nIn production, this opens the camera to scan item barcodes directly into the system.');
+      document.getElementById('scannerModal').classList.add('open');
+      switchScannerTab('qr');
+    }
+    
+    function closeScanner() {
+      document.getElementById('scannerModal').classList.remove('open');
+      stopCamera();
+    }
+    
+    function switchScannerTab(tab) {
+      document.querySelectorAll('.scanner-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.scanner-body').forEach(b => b.style.display = 'none');
+      
+      event.target.classList.add('active');
+      document.getElementById('scanner-' + tab).style.display = 'flex';
+      
+      if (tab === 'qr') {
+        startCamera();
+      } else {
+        stopCamera();
+        if (tab === 'rfid') {
+          document.getElementById('rfidInput').focus();
+        } else if (tab === 'manual') {
+          document.getElementById('manualInput').focus();
+        }
+      }
+    }
+    
+    async function startCamera() {
+      try {
+        const video = document.getElementById('scannerVideo');
+        scannerStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        video.srcObject = scannerStream;
+        video.play();
+        
+        // Start scanning loop (simulated - in production use jsQR or similar)
+        scanLoop();
+      } catch (err) {
+        console.error('Camera error:', err);
+        alert('Could not access camera. Please allow camera permissions or use Manual Entry tab.');
+      }
+    }
+    
+    function stopCamera() {
+      if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+      }
+    }
+    
+    // Simulated scan loop - in production, use jsQR library for real scanning
+    function scanLoop() {
+      // This is a placeholder - real implementation would use jsQR or html5-qrcode library
+      // For demo, we'll add a click-to-simulate-scan
+    }
+    
+    // Simulate a scan (for demo - click the video to simulate)
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('scannerVideo')?.addEventListener('click', () => {
+        // Simulate finding a random barcode from our items
+        const itemsWithBarcode = items.filter(i => i.barcode);
+        if (itemsWithBarcode.length > 0) {
+          const randomItem = itemsWithBarcode[Math.floor(Math.random() * itemsWithBarcode.length)];
+          handleScannedCode(randomItem.barcode);
+        } else {
+          handleScannedCode('DEMO-' + Date.now());
+        }
+      });
+    });
+    
+    function handleScannedCode(code) {
+      document.getElementById('scanResult').classList.add('show');
+      document.getElementById('scannedCode').textContent = code;
+      
+      // Look up item by barcode
+      const item = items.find(i => i.barcode === code);
+      if (item) {
+        currentScannedItem = item;
+        document.getElementById('scannedItem').style.display = 'block';
+        document.getElementById('scannedItemName').textContent = item.name + (item.qty > 1 ? ` (×${item.qty})` : '');
+        document.getElementById('scannedItemMeta').textContent = `Stage: ${item.stage} | Truck: ${item.truck || 'None'} | Venue: ${item.venue || 'None'}`;
+        document.getElementById('scanActionStage').value = item.stage;
+        document.getElementById('scanActionTruck').value = item.truck || '';
+      } else {
+        currentScannedItem = null;
+        document.getElementById('scannedItem').style.display = 'none';
+        document.getElementById('scannedItemMeta').textContent = 'Item not found in system';
+      }
+      
+      // Play beep sound
+      playBeep();
+    }
+    
+    function playBeep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.frequency.value = 1200;
+      gain.gain.value = 0.3;
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), 100);
+    }
+    
+    function applyScanAction() {
+      if (!currentScannedItem) {
+        alert('No item selected');
+        return;
+      }
+      
+      const stage = document.getElementById('scanActionStage').value;
+      const truck = document.getElementById('scanActionTruck').value;
+      
+      if (stage) currentScannedItem.stage = stage;
+      currentScannedItem.truck = truck;
+      
+      saveItems();
+      renderBoard();
+      renderManifests();
+      renderFleet();
+      
+      playBeep();
+      alert(`✅ Updated: ${currentScannedItem.name}\nStage: ${currentScannedItem.stage}\nTruck: ${currentScannedItem.truck || 'None'}`);
+    }
+    
+    function continueScan() {
+      document.getElementById('scanResult').classList.remove('show');
+      currentScannedItem = null;
+    }
+    
+    // RFID functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const rfidInput = document.getElementById('rfidInput');
+      if (rfidInput) {
+        let rfidBuffer = '';
+        let rfidTimeout;
+        
+        rfidInput.addEventListener('input', (e) => {
+          clearTimeout(rfidTimeout);
+          rfidBuffer = e.target.value;
+          
+          // RFID readers typically send data quickly then stop
+          rfidTimeout = setTimeout(() => {
+            if (rfidBuffer.length > 3) {
+              handleRfidScan(rfidBuffer);
+            }
+          }, 300);
+        });
+        
+        rfidInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' && rfidInput.value.trim()) {
+            handleRfidScan(rfidInput.value.trim());
+          }
+        });
+      }
+    });
+    
+    function handleRfidScan(tag) {
+      document.getElementById('rfidResult').classList.add('show');
+      document.getElementById('rfidCode').textContent = tag;
+      
+      // Look up item by barcode (RFID tags would map to barcodes)
+      const item = items.find(i => i.barcode === tag);
+      if (item) {
+        rfidScannedItem = item;
+        document.getElementById('rfidItem').style.display = 'block';
+        document.getElementById('rfidItemName').textContent = item.name + (item.qty > 1 ? ` (×${item.qty})` : '');
+        document.getElementById('rfidItemMeta').textContent = `Stage: ${item.stage} | Truck: ${item.truck || 'None'}`;
+        document.getElementById('rfidActionStage').value = item.stage;
+        document.getElementById('rfidActionTruck').value = item.truck || '';
+      } else {
+        rfidScannedItem = null;
+        document.getElementById('rfidItem').style.display = 'none';
+      }
+      
+      playBeep();
+      document.getElementById('rfidInput').value = '';
+      document.getElementById('rfidInput').focus();
+    }
+    
+    function applyRfidAction() {
+      if (!rfidScannedItem) {
+        alert('No item selected');
+        return;
+      }
+      
+      const stage = document.getElementById('rfidActionStage').value;
+      const truck = document.getElementById('rfidActionTruck').value;
+      
+      if (stage) rfidScannedItem.stage = stage;
+      rfidScannedItem.truck = truck;
+      
+      saveItems();
+      renderBoard();
+      renderManifests();
+      renderFleet();
+      
+      playBeep();
+      alert(`✅ Updated: ${rfidScannedItem.name}`);
+      
+      document.getElementById('rfidResult').classList.remove('show');
+      document.getElementById('rfidItem').style.display = 'none';
+      rfidScannedItem = null;
+    }
+    
+    // Manual lookup
+    function lookupManual() {
+      const code = document.getElementById('manualInput').value.trim();
+      if (!code) {
+        alert('Please enter a barcode or item name');
+        return;
+      }
+      
+      // Look up by barcode or name
+      const item = items.find(i => 
+        i.barcode?.toLowerCase() === code.toLowerCase() || 
+        i.name.toLowerCase().includes(code.toLowerCase())
+      );
+      
+      if (item) {
+        manualScannedItem = item;
+        document.getElementById('manualItem').style.display = 'block';
+        document.getElementById('manualItemName').textContent = item.name + (item.qty > 1 ? ` (×${item.qty})` : '');
+        document.getElementById('manualItemMeta').textContent = `Stage: ${item.stage} | Truck: ${item.truck || 'None'} | Barcode: ${item.barcode || 'None'}`;
+        document.getElementById('manualActions').style.display = 'flex';
+        document.getElementById('manualActionStage').value = item.stage;
+        document.getElementById('manualActionTruck').value = item.truck || '';
+        playBeep();
+      } else {
+        manualScannedItem = null;
+        document.getElementById('manualItem').style.display = 'none';
+        document.getElementById('manualActions').style.display = 'none';
+        alert('Item not found. Try a different barcode or name.');
+      }
+    }
+    
+    function applyManualAction() {
+      if (!manualScannedItem) {
+        alert('No item selected');
+        return;
+      }
+      
+      const stage = document.getElementById('manualActionStage').value;
+      const truck = document.getElementById('manualActionTruck').value;
+      
+      if (stage) manualScannedItem.stage = stage;
+      manualScannedItem.truck = truck;
+      
+      saveItems();
+      renderBoard();
+      renderManifests();
+      renderFleet();
+      
+      playBeep();
+      alert(`✅ Updated: ${manualScannedItem.name}`);
+      
+      document.getElementById('manualInput').value = '';
+      document.getElementById('manualItem').style.display = 'none';
+      document.getElementById('manualActions').style.display = 'none';
+      manualScannedItem = null;
     }
     
     // Initialize
