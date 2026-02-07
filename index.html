@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Trucking Tracker | The Light Park</title>
+  <style>
+    :root {
+      --bg: #0B0D14;
+      --surface: #12151F;
+      --surface2: #1a1e2e;
+      --border: #2a2f42;
+      --text: #f0f0f5;
+      --text-dim: #8888a0;
+      --purple: #a855f7;
+      --teal: #06d6a0;
+      --pink: #ff4fd8;
+      --orange: #f97316;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --yellow: #eab308;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    
+    /* Splash */
+    #splash {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash .icon { font-size: 80px; margin-bottom: 16px; }
+    #splash h1 { font-size: 28px; font-weight: 800; }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .header-actions { display: flex; gap: 8px; }
+    .header-btn {
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 16px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+    }
+    .stat-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .stat-staged { color: var(--yellow); }
+    .stat-packed { color: var(--orange); }
+    .stat-transit { color: var(--blue); }
+    .stat-delivered { color: var(--green); }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      background: var(--surface);
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+    .tab.active {
+      color: var(--purple);
+      border-bottom-color: var(--purple);
+    }
+    
+    .tab-content { display: none; padding: 16px; }
+    .tab-content.active { display: block; }
+    
+    /* Kanban Board */
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 16px;
+    }
+    .kanban-column {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 180px;
+      min-height: 400px;
+    }
+    .column-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .column-count {
+      background: var(--surface2);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .column-items {
+      padding: 8px;
+      min-height: 350px;
+    }
+    
+    /* Stage colors */
+    .stage-staged .column-header { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
+    .stage-packed .column-header { background: rgba(249, 115, 22, 0.15); color: var(--orange); }
+    .stage-loaded .column-header { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+    .stage-transit .column-header { background: rgba(59, 130, 246, 0.15); color: var(--blue); }
+    .stage-delivered .column-header { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+    .stage-returned .column-header { background: rgba(6, 214, 160, 0.15); color: var(--teal); }
+    
+    /* Item Card */
+    .item-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: all 0.2s;
+    }
+    .item-card:hover {
+      border-color: var(--purple);
+      transform: translateY(-1px);
+    }
+    .item-card.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    .item-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .item-meta { font-size: 11px; color: var(--text-dim); }
+    .item-badges { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+    .badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .badge-truck { background: rgba(255, 79, 216, 0.2); color: var(--pink); }
+    .badge-venue { background: rgba(6, 214, 160, 0.2); color: var(--teal); }
+    .badge-qty { background: rgba(148, 163, 184, 0.2); color: var(--text-dim); }
+    
+    /* Fleet Panel */
+    .fleet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .fleet-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .fleet-header {
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .fleet-name { font-weight: 700; font-size: 16px; }
+    .fleet-status {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-hq { background: var(--green); color: white; }
+    .status-transit { background: var(--blue); color: white; }
+    .status-site { background: var(--purple); color: white; }
+    .status-offline { background: var(--surface2); color: var(--text-dim); }
+    .fleet-body { padding: 14px; }
+    .fleet-location { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .fleet-items { font-size: 12px; }
+    .fleet-driver { font-size: 12px; color: var(--teal); margin-top: 8px; }
+    
+    /* Loading Zones */
+    .zones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .zone-card {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+    }
+    .zone-card.occupied {
+      border-color: var(--green);
+      border-style: solid;
+    }
+    .zone-card.loading {
+      border-color: var(--orange);
+      border-style: solid;
+    }
+    .zone-name { font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+    .zone-status { font-size: 13px; color: var(--text-dim); }
+    .zone-truck { font-size: 14px; color: var(--green); font-weight: 600; margin-top: 8px; }
+    .zone-badge {
+      position: absolute;
+      top: -8px;
+      right: 10px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .badge-loading { background: var(--orange); color: #000; }
+    .badge-ready { background: var(--green); color: white; }
+    
+    /* Venues Panel */
+    .venues-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .venue-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .venue-name { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+    .venue-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .venue-stat {
+      font-size: 12px;
+      padding: 4px 8px;
+      background: var(--surface2);
+      border-radius: 4px;
+    }
+    .venue-stat strong { color: var(--purple); }
+    
+    /* Form */
+    .add-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .form-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .btn {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white;
+    }
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    
+    /* Scanner Button */
+    .scan-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+      z-index: 100;
+    }
+    
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Mobile */
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .kanban { grid-template-columns: repeat(2, 1fr); }
+      .kanban-column { min-width: 160px; }
+    }
+    @media (max-width: 480px) {
+      .kanban { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash -->
+  <div id="splash">
+    <div class="icon">🚚</div>
+    <h1>Trucking Tracker</h1>
+  </div>
+  
+  <!-- Header -->
+  <div class="header">
+    <h1>🚚 Trucking Tracker</h1>
+    <div class="header-actions">
+      <button class="header-btn" onclick="exportCSV()">📊 Export</button>
+      <button class="header-btn" onclick="syncData()">🔄 Sync</button>
+    </div>
+  </div>
+  
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value stat-staged" id="statStaged">0</div>
+      <div class="stat-label">Staged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-packed" id="statPacked">0</div>
+      <div class="stat-label">Packed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-transit" id="statTransit">0</div>
+      <div class="stat-label">In Transit</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-delivered" id="statDelivered">0</div>
+      <div class="stat-label">Delivered</div>
+    </div>
+  </div>
+  
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="board">📋 Board</button>
+    <button class="tab" data-tab="fleet">🚛 Fleet</button>
+    <button class="tab" data-tab="zones">📡 Loading Zones</button>
+    <button class="tab" data-tab="venues">📍 Venues</button>
+    <button class="tab" data-tab="add">➕ Add Item</button>
+  </div>
+  
+  <!-- BOARD TAB -->
+  <div class="tab-content active" id="tab-board">
+    <div class="kanban" id="kanbanBoard">
+      <!-- Generated by JS -->
+    </div>
+  </div>
+  
+  <!-- FLEET TAB -->
+  <div class="tab-content" id="tab-fleet">
+    <div class="section">
+      <div class="section-title">🚛 Active Fleet</div>
+      <div class="fleet-grid" id="fleetGrid">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🛰️ GPS Tracking</div>
+      <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 12px;">
+        AirTags/GPS trackers on each truck. When truck crosses geofence → system auto-updates status.
+      </p>
+      <div class="venues-grid">
+        <div class="venue-card">
+          <div class="venue-name">📍 College Station HQ</div>
+          <div class="venue-stats">
+            <div class="venue-stat">Geofence: <strong>500m</strong></div>
+            <div class="venue-stat">Trucks: <strong id="hqTrucks">3</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- LOADING ZONES TAB -->
+  <div class="tab-content" id="tab-zones">
+    <div class="section">
+      <div class="section-title">🏭 Bay Doors</div>
+      <div class="zones-grid" id="bayDoors">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🅿️ Yard Positions</div>
+      <div class="zones-grid" id="yardPositions">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- VENUES TAB -->
+  <div class="tab-content" id="tab-venues">
+    <div class="section">
+      <div class="section-title">📍 Delivery Status by Venue</div>
+      <div class="venues-grid" id="venuesGrid">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- ADD ITEM TAB -->
+  <div class="tab-content" id="tab-add">
+    <div class="add-form">
+      <div class="form-title">➕ Add New Item</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input type="text" id="itemName" placeholder="Mega Tree #1">
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="itemQty" value="1" min="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="itemDesc" placeholder="Main display piece">
+        </div>
+        <div class="form-group">
+          <label>Barcode/ID</label>
+          <input type="text" id="itemBarcode" placeholder="TREE-MEGA-01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Destination Venue</label>
+          <select id="itemVenue">
+            <option value="">-- Select --</option>
+            <option value="katy">Katy</option>
+            <option value="spring">Spring</option>
+            <option value="selma">Selma</option>
+            <option value="missions">Missions</option>
+            <option value="arlington">Arlington</option>
+            <option value="frisco">Frisco</option>
+            <option value="round-rock">Round Rock</option>
+            <option value="okc">Oklahoma City</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assign Truck</label>
+          <select id="itemTruck">
+            <option value="">-- Optional --</option>
+            <option value="DRYVAN-01">DRYVAN-01</option>
+            <option value="DRYVAN-02">DRYVAN-02</option>
+            <option value="FLATBED-01">FLATBED-01</option>
+            <option value="FLATBED-02">FLATBED-02</option>
+            <option value="CONEX-01">CONEX-01</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addItem()">➕ Add to Staged</button>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">📷 Scan to Add</div>
+      <p style="color: var(--text-dim); font-size: 13px;">
+        Use the floating scan button to scan QR codes or barcodes directly into the system.
+      </p>
+    </div>
+  </div>
+  
+  <!-- Scan Button -->
+  <button class="scan-btn" onclick="openScanner()">📷</button>
+  
+  <script>
+    // Supabase config
+    const SUPABASE_URL = 'https://gwjtfcrgpxclixonogpe.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3anRmY3JncHhjbGl4b25vZ3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMzQzOTUsImV4cCI6MjA4NTkxMDM5NX0.qM1-_VA1Dsx_nsWkeoAJvNWNgSuuwApPBGoJU32X3-I';
+    
+    const stages = ['Staged', 'Packed', 'Loaded', 'In Transit', 'Delivered', 'Returned'];
+    const stageClasses = ['staged', 'packed', 'loaded', 'transit', 'delivered', 'returned'];
+    
+    const venues = [
+      { id: 'katy', name: 'Katy', region: 'Houston' },
+      { id: 'spring', name: 'Spring', region: 'Houston' },
+      { id: 'selma', name: 'Selma', region: 'San Antonio' },
+      { id: 'missions', name: 'Missions', region: 'San Antonio' },
+      { id: 'arlington', name: 'Arlington', region: 'DFW' },
+      { id: 'frisco', name: 'Frisco', region: 'DFW' },
+      { id: 'round-rock', name: 'Round Rock', region: 'Austin' },
+      { id: 'okc', name: 'Oklahoma City', region: 'Oklahoma' }
+    ];
+    
+    // Demo data
+    let items = JSON.parse(localStorage.getItem('truckingItems') || 'null') || [
+      { id: 1, name: 'Mega Tree #1', qty: 1, desc: 'Main display', stage: 'Staged', truck: 'FLATBED-01', venue: 'katy', barcode: 'TREE-MEGA-01' },
+      { id: 2, name: 'LED Arch #1', qty: 1, desc: 'Entrance arch', stage: 'Staged', truck: 'FLATBED-01', venue: 'katy', barcode: 'ARCH-LED-01' },
+      { id: 3, name: 'Traffic Cones', qty: 50, desc: 'Lane markers', stage: 'Packed', truck: 'DRYVAN-01', venue: 'spring', barcode: 'CONE-001' },
+      { id: 4, name: 'Pi Controllers', qty: 25, desc: 'FPP units', stage: 'Packed', truck: 'DRYVAN-01', venue: 'spring', barcode: 'CTRL-PI-001' },
+      { id: 5, name: 'Truss 10ft', qty: 40, desc: 'Structure', stage: 'Loaded', truck: 'FLATBED-02', venue: 'selma', barcode: 'TRUSS-10' },
+      { id: 6, name: 'Gnome Prop A1', qty: 1, desc: 'Katy show', stage: 'In Transit', truck: 'FLATBED-01', venue: 'katy', barcode: 'GNOME-A1' },
+      { id: 7, name: 'Pixel Strings', qty: 200, desc: '100ct strings', stage: 'Delivered', truck: '', venue: 'katy', barcode: 'PIXEL-STR-100' },
+      { id: 8, name: 'Sandbags', qty: 100, desc: 'Ballast', stage: 'Delivered', truck: '', venue: 'spring', barcode: 'SANDBAG-50' },
+      { id: 9, name: 'Storage Totes', qty: 30, desc: 'Empty totes', stage: 'Returned', truck: '', venue: '', barcode: 'TOTE-001' },
+      { id: 10, name: 'Extension Cables', qty: 75, desc: '50ft cables', stage: 'Staged', truck: '', venue: 'arlington', barcode: 'CABLE-50' }
+    ];
+    
+    let fleet = [
+      { id: 'DRYVAN-01', type: 'Dry Van', status: 'hq', location: 'College Station HQ', driver: 'Mike R.', items: 2 },
+      { id: 'DRYVAN-02', type: 'Dry Van', status: 'transit', location: 'En route to Katy', driver: 'Steve L.', items: 0 },
+      { id: 'FLATBED-01', type: 'Flatbed', status: 'transit', location: 'En route to Katy', driver: 'Jake T.', items: 3 },
+      { id: 'FLATBED-02', type: 'Flatbed', status: 'site', location: 'Selma (loading)', driver: 'Chris M.', items: 1 },
+      { id: 'CONEX-01', type: 'Conex', status: 'hq', location: 'College Station HQ', driver: '', items: 0 }
+    ];
+    
+    let loadingZones = {
+      bayDoors: [
+        { id: 'BAY-1', name: 'Bay Door 1', truck: 'DRYVAN-01', status: 'loading' },
+        { id: 'BAY-2', name: 'Bay Door 2', truck: '', status: 'empty' },
+        { id: 'BAY-3', name: 'Bay Door 3', truck: '', status: 'empty' }
+      ],
+      yard: [
+        { id: 'YARD-A', name: 'Yard A', truck: 'FLATBED-02', status: 'occupied' },
+        { id: 'YARD-B', name: 'Yard B', truck: 'CONEX-01', status: 'occupied' },
+        { id: 'YARD-C', name: 'Yard C', truck: '', status: 'empty' },
+        { id: 'YARD-D', name: 'Yard D', truck: '', status: 'empty' }
+      ]
+    };
+    
+    // Tab navigation
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+    
+    // Render kanban board
+    function renderBoard() {
+      const board = document.getElementById('kanbanBoard');
+      board.innerHTML = stages.map((stage, i) => {
+        const stageItems = items.filter(item => item.stage === stage);
+        return `
+          <div class="kanban-column stage-${stageClasses[i]}" 
+               ondrop="dropItem(event, '${stage}')" 
+               ondragover="event.preventDefault()">
+            <div class="column-header">
+              ${stage}
+              <span class="column-count">${stageItems.length}</span>
+            </div>
+            <div class="column-items">
+              ${stageItems.map(item => `
+                <div class="item-card" draggable="true" 
+                     ondragstart="dragItem(event, ${item.id})"
+                     ondragend="dragEnd(event)">
+                  <div class="item-name">${item.name}</div>
+                  <div class="item-meta">${item.desc || ''}</div>
+                  <div class="item-badges">
+                    ${item.qty > 1 ? `<span class="badge badge-qty">×${item.qty}</span>` : ''}
+                    ${item.truck ? `<span class="badge badge-truck">${item.truck}</span>` : ''}
+                    ${item.venue ? `<span class="badge badge-venue">${item.venue}</span>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      updateStats();
+    }
+    
+    // Drag and drop
+    let draggedId = null;
+    
+    function dragItem(e, id) {
+      draggedId = id;
+      e.target.classList.add('dragging');
+    }
+    
+    function dragEnd(e) {
+      e.target.classList.remove('dragging');
+    }
+    
+    function dropItem(e, stage) {
+      e.preventDefault();
+      if (draggedId) {
+        const item = items.find(i => i.id === draggedId);
+        if (item) {
+          item.stage = stage;
+          saveItems();
+          renderBoard();
+        }
+      }
+      draggedId = null;
+    }
+    
+    // Update stats
+    function updateStats() {
+      document.getElementById('statStaged').textContent = items.filter(i => i.stage === 'Staged').length;
+      document.getElementById('statPacked').textContent = items.filter(i => i.stage === 'Packed' || i.stage === 'Loaded').length;
+      document.getElementById('statTransit').textContent = items.filter(i => i.stage === 'In Transit').length;
+      document.getElementById('statDelivered').textContent = items.filter(i => i.stage === 'Delivered').length;
+    }
+    
+    // Render fleet
+    function renderFleet() {
+      const grid = document.getElementById('fleetGrid');
+      grid.innerHTML = fleet.map(truck => {
+        const truckItems = items.filter(i => i.truck === truck.id);
+        return `
+          <div class="fleet-card">
+            <div class="fleet-header">
+              <span class="fleet-name">🚛 ${truck.id}</span>
+              <span class="fleet-status status-${truck.status}">${truck.status.toUpperCase()}</span>
+            </div>
+            <div class="fleet-body">
+              <div class="fleet-location">📍 ${truck.location}</div>
+              <div class="fleet-items">📦 ${truckItems.length} items assigned</div>
+              ${truck.driver ? `<div class="fleet-driver">👤 ${truck.driver}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Render loading zones
+    function renderZones() {
+      const bays = document.getElementById('bayDoors');
+      bays.innerHTML = loadingZones.bayDoors.map(zone => `
+        <div class="zone-card ${zone.status}">
+          ${zone.status === 'loading' ? '<span class="zone-badge badge-loading">LOADING</span>' : ''}
+          <div class="zone-name">${zone.name}</div>
+          ${zone.truck ? `<div class="zone-truck">🚛 ${zone.truck}</div>` : '<div class="zone-status">Available</div>'}
+        </div>
+      `).join('');
+      
+      const yard = document.getElementById('yardPositions');
+      yard.innerHTML = loadingZones.yard.map(zone => `
+        <div class="zone-card ${zone.status}">
+          <div class="zone-name">${zone.name}</div>
+          ${zone.truck ? `<div class="zone-truck">🚛 ${zone.truck}</div>` : '<div class="zone-status">Empty</div>'}
+        </div>
+      `).join('');
+    }
+    
+    // Render venues
+    function renderVenues() {
+      const grid = document.getElementById('venuesGrid');
+      grid.innerHTML = venues.map(venue => {
+        const venueItems = items.filter(i => i.venue === venue.id);
+        const delivered = venueItems.filter(i => i.stage === 'Delivered').length;
+        const inTransit = venueItems.filter(i => i.stage === 'In Transit').length;
+        const pending = venueItems.filter(i => ['Staged', 'Packed', 'Loaded'].includes(i.stage)).length;
+        
+        return `
+          <div class="venue-card">
+            <div class="venue-name">📍 ${venue.name}</div>
+            <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 8px;">${venue.region}</div>
+            <div class="venue-stats">
+              <div class="venue-stat">Delivered: <strong style="color: var(--green);">${delivered}</strong></div>
+              <div class="venue-stat">Transit: <strong style="color: var(--blue);">${inTransit}</strong></div>
+              <div class="venue-stat">Pending: <strong style="color: var(--orange);">${pending}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Add item
+    function addItem() {
+      const name = document.getElementById('itemName').value.trim();
+      if (!name) {
+        alert('Please enter an item name');
+        return;
+      }
+      
+      const newItem = {
+        id: Date.now(),
+        name,
+        qty: parseInt(document.getElementById('itemQty').value) || 1,
+        desc: document.getElementById('itemDesc').value.trim(),
+        barcode: document.getElementById('itemBarcode').value.trim(),
+        venue: document.getElementById('itemVenue').value,
+        truck: document.getElementById('itemTruck').value,
+        stage: 'Staged'
+      };
+      
+      items.push(newItem);
+      saveItems();
+      renderBoard();
+      
+      // Clear form
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemDesc').value = '';
+      document.getElementById('itemBarcode').value = '';
+      
+      // Switch to board tab
+      document.querySelector('[data-tab="board"]').click();
+    }
+    
+    // Save items
+    function saveItems() {
+      localStorage.setItem('truckingItems', JSON.stringify(items));
+    }
+    
+    // Export CSV
+    function exportCSV() {
+      let csv = 'Name,Quantity,Description,Stage,Truck,Venue,Barcode\n';
+      items.forEach(item => {
+        csv += `"${item.name}","${item.qty}","${item.desc || ''}","${item.stage}","${item.truck || ''}","${item.venue || ''}","${item.barcode || ''}"\n`;
+      });
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `trucking-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    }
+    
+    // Sync data (placeholder)
+    function syncData() {
+      alert('Syncing with Shop Manager data...\n\nIn production, this pulls from the shared Supabase database.');
+    }
+    
+    // Scanner (placeholder)
+    function openScanner() {
+      alert('📷 QR/Barcode Scanner\n\nIn production, this opens the camera to scan item barcodes directly into the system.');
+    }
+    
+    // Initialize
+    renderBoard();
+    renderFleet();
+    renderZones();
+    renderVenues();
+    
+    // Splash
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1200);
+  </script>
+</body>
+</html>
