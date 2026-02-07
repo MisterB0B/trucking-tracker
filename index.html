@@ -48,8 +48,15 @@
       transition: opacity 0.5s;
     }
     #splash.hidden { opacity: 0; pointer-events: none; }
-    #splash .icon { font-size: 80px; margin-bottom: 16px; }
-    #splash h1 { font-size: 28px; font-weight: 800; }
+    #splash img {
+      max-width: 85%;
+      max-height: 30vh;
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 8px 32px rgba(168, 85, 247, 0.4)); }
+      50% { filter: drop-shadow(0 8px 48px rgba(6, 214, 160, 0.6)); }
+    }
     
     /* Header */
     .header {
@@ -393,8 +400,7 @@
 <body>
   <!-- Splash -->
   <div id="splash">
-    <div class="icon">🚚</div>
-    <h1>Trucking Tracker</h1>
+    <img src="trucking-logo.jpg" alt="The Light Park Trucking">
   </div>
   
   <!-- Header -->
@@ -825,7 +831,7 @@
     renderVenues();
     
     // Splash
-    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1200);
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 2000);
   </script>
 </body>
 </html>
