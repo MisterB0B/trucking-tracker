@@ -681,6 +681,9 @@
       .kanban { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="/shared/supabase-auth.js"></script>
+  <script src="/shared/activity-logger.js"></script>
+  <script src="/shared/auth-gate.js" data-app="Trucking Tracker" data-icon="🚛"></script>
 </head>
 <body>
   <!-- Splash -->
@@ -690,6 +693,7 @@
   
   <!-- Header -->
   <div class="header">
+    <a href="/dashboard.html" style="color:#a855f7;text-decoration:none;font-size:13px;font-weight:600;">← Dashboard</a>
     <h1>🚚 Trucking Tracker</h1>
     <div class="header-actions">
       <button class="header-btn" onclick="exportCSV()">📊 Export</button>
@@ -840,6 +844,15 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Lane Code 📍</label>
+          <input type="text" id="itemLaneCode" placeholder="3A, 7B, 12C..." style="text-transform: uppercase;">
+          <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+            <a href="https://thelightparkops.com/venue-layout-map/" target="_blank" style="color: var(--purple);">View Lane Map →</a>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label>Assign Truck</label>
           <select id="itemTruck">
             <option value="">-- Optional --</option>
@@ -849,6 +862,9 @@
             <option value="FLATBED-02">FLATBED-02</option>
             <option value="CONEX-01">CONEX-01</option>
           </select>
+        </div>
+        <div class="form-group">
+          <!-- Empty for layout balance -->
         </div>
       </div>
       <button class="btn btn-primary" onclick="addItem()">➕ Add to Staged</button>
@@ -1071,6 +1087,7 @@
                   <div class="item-name">${item.name}</div>
                   <div class="item-meta">${item.desc || ''}</div>
                   <div class="item-badges">
+                    ${item.laneCode ? `<span class="badge" style="background: linear-gradient(135deg, #a855f7, #06d6a0); color: white; font-weight: 700;">📍 ${item.laneCode}</span>` : ''}
                     ${item.qty > 1 ? `<span class="badge badge-qty">×${item.qty}</span>` : ''}
                     ${item.truck ? `<span class="badge badge-truck">${item.truck}</span>` : ''}
                     ${item.venue ? `<span class="badge badge-venue">${item.venue}</span>` : ''}
@@ -1250,6 +1267,7 @@
         desc: document.getElementById('itemDesc').value.trim(),
         barcode: document.getElementById('itemBarcode').value.trim(),
         venue: document.getElementById('itemVenue').value,
+        laneCode: document.getElementById('itemLaneCode').value.trim().toUpperCase(),
         truck: document.getElementById('itemTruck').value,
         stage: 'Staged'
       };
@@ -1264,6 +1282,7 @@
       document.getElementById('itemName').value = '';
       document.getElementById('itemDesc').value = '';
       document.getElementById('itemBarcode').value = '';
+      document.getElementById('itemLaneCode').value = '';
       
       // Switch to board tab
       document.querySelector('[data-tab="board"]').click();
